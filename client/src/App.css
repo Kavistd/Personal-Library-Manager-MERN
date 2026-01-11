@@ -139,6 +139,20 @@
   cursor: not-allowed;
 }
 
+.btn-save.saved {
+  background-color: #2196F3;
+  cursor: default;
+}
+
+.btn-save.saved:hover {
+  background-color: #2196F3;
+}
+
+.btn-save.saved:disabled {
+  background-color: #2196F3;
+  opacity: 1;
+}
+
 .book-link {
   color: #4CAF50;
   text-decoration: none;
@@ -400,6 +414,59 @@
   margin: 0;
   color: #555;
   font-size: 0.9rem;
+}
+
+.book-review-input {
+  margin: 1rem 0;
+}
+
+.book-review-input label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.review-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.review-textarea:focus {
+  border-color: #4CAF50;
+}
+
+.review-textarea:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}
+
+.btn-update {
+  padding: 0.5rem 1rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.3s;
+}
+
+.btn-update:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.btn-update:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
 
 .error-message {

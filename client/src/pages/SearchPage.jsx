@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 
@@ -8,7 +8,28 @@ function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [savingBookId, setSavingBookId] = useState(null);
+  const [savedBookIds, setSavedBookIds] = useState(new Set()); // Track saved book IDs
   const { isAuthenticated } = useAuth();
+
+  // Fetch user's saved books to check which ones are already saved
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchSavedBooks();
+    } else {
+      setSavedBookIds(new Set());
+    }
+  }, [isAuthenticated]);
+
+  const fetchSavedBooks = async () => {
+    try {
+      const response = await api.get('/books');
+      const savedIds = new Set(response.data.map(book => book.googleBookId));
+      setSavedBookIds(savedIds);
+    } catch (err) {
+      // Silently fail - user might not have any saved books yet
+      console.error('Failed to fetch saved books:', err);
+    }
+  };
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -42,6 +63,11 @@ function SearchPage() {
       return;
     }
 
+    // Check if already saved
+    if (savedBookIds.has(book.id)) {
+      return;
+    }
+
     const volumeInfo = book.volumeInfo || {};
     
     // Extract book data with safe handling for undefined fields
@@ -65,10 +91,12 @@ function SearchPage() {
 
     try {
       await api.post('/books', bookData);
-      alert('Book saved successfully!');
+      // Add to saved books set
+      setSavedBookIds(prev => new Set([...prev, book.id]));
     } catch (err) {
       if (err.response?.status === 400 && err.response?.data?.message?.includes('already saved')) {
-        alert('This book is already in your library!');
+        // Book is already saved, add to set
+        setSavedBookIds(prev => new Set([...prev, book.id]));
       } else {
         alert('Failed to save book. Please try again.');
       }
@@ -151,10 +179,14 @@ function SearchPage() {
                     {isAuthenticated && (
                       <button
                         onClick={() => handleSaveBook(book)}
-                        disabled={savingBookId === book.id}
-                        className="btn-save"
+                        disabled={savingBookId === book.id || savedBookIds.has(book.id)}
+                        className={savedBookIds.has(book.id) ? 'btn-save saved' : 'btn-save'}
                       >
-                        {savingBookId === book.id ? 'Saving...' : 'Save'}
+                        {savingBookId === book.id 
+                          ? 'Saving...' 
+                          : savedBookIds.has(book.id) 
+                          ? 'Saved ✅' 
+                          : 'Save'}
                       </button>
                     )}
                   </div>

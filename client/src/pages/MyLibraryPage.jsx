@@ -7,6 +7,9 @@ function MyLibraryPage() {
   const [books, setBooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [updatingBookId, setUpdatingBookId] = useState(null);
+  // Track form values for each book (status and review)
+  const [bookForms, setBookForms] = useState({});
   const navigate = useNavigate();
   const { user, logout, isAuthenticated } = useAuth(); // Get user and logout from AuthContext
 
@@ -23,7 +26,18 @@ function MyLibraryPage() {
     try {
       // api instance automatically attaches token via interceptor
       const response = await api.get('/books');
-      setBooks(response.data);
+      const fetchedBooks = response.data;
+      setBooks(fetchedBooks);
+      
+      // Initialize form values with current book data
+      const initialForms = {};
+      fetchedBooks.forEach(book => {
+        initialForms[book._id] = {
+          status: book.status || 'Want to Read',
+          review: book.review || ''
+        };
+      });
+      setBookForms(initialForms);
     } catch (err) {
       // 401 errors are handled by the axios interceptor
       setError('Failed to load books. Please try again.');
@@ -40,25 +54,75 @@ function MyLibraryPage() {
     try {
       // api instance automatically attaches token via interceptor
       await api.delete(`/books/${bookId}`);
-      // Remove book from state
+      
+      // Update UI instantly - remove from state
       setBooks(books.filter((book) => book._id !== bookId));
+      
+      // Also remove from form state
+      setBookForms(prev => {
+        const newForms = { ...prev };
+        delete newForms[bookId];
+        return newForms;
+      });
     } catch (err) {
       alert('Failed to delete book. Please try again.');
     }
   };
 
-  const handleStatusChange = async (bookId, newStatus) => {
+  const handleStatusChange = (bookId, newStatus) => {
+    // Update local form state only
+    setBookForms(prev => ({
+      ...prev,
+      [bookId]: {
+        ...prev[bookId],
+        status: newStatus
+      }
+    }));
+  };
+
+  const handleReviewChange = (bookId, newReview) => {
+    // Update local form state only
+    setBookForms(prev => ({
+      ...prev,
+      [bookId]: {
+        ...prev[bookId],
+        review: newReview
+      }
+    }));
+  };
+
+  const handleUpdateBook = async (bookId) => {
+    const formData = bookForms[bookId];
+    if (!formData) return;
+
+    setUpdatingBookId(bookId);
+
     try {
       // api instance automatically attaches token via interceptor
-      await api.put(`/books/${bookId}`, { status: newStatus });
-      // Update book status in state
+      const response = await api.put(`/books/${bookId}`, {
+        status: formData.status,
+        review: formData.review
+      });
+      
+      // Update book in state with response data
       setBooks(
         books.map((book) =>
-          book._id === bookId ? { ...book, status: newStatus } : book
+          book._id === bookId ? response.data.book : book
         )
       );
+      
+      // Update form state to match saved data
+      setBookForms(prev => ({
+        ...prev,
+        [bookId]: {
+          status: response.data.book.status,
+          review: response.data.book.review || ''
+        }
+      }));
     } catch (err) {
-      alert('Failed to update book status. Please try again.');
+      alert('Failed to update book. Please try again.');
+    } finally {
+      setUpdatingBookId(null);
     }
   };
 
@@ -116,22 +180,35 @@ function MyLibraryPage() {
                 <div className="book-status">
                   <label>Status:</label>
                   <select
-                    value={book.status || 'Want to Read'}
+                    value={bookForms[book._id]?.status || book.status || 'Want to Read'}
                     onChange={(e) => handleStatusChange(book._id, e.target.value)}
                     className="status-select"
+                    disabled={updatingBookId === book._id}
                   >
                     <option value="Want to Read">Want to Read</option>
                     <option value="Reading">Reading</option>
                     <option value="Completed">Completed</option>
                   </select>
                 </div>
-                {book.review && (
-                  <div className="book-review">
-                    <strong>Review:</strong>
-                    <p>{book.review}</p>
-                  </div>
-                )}
+                <div className="book-review-input">
+                  <label>Review:</label>
+                  <textarea
+                    value={bookForms[book._id]?.review || ''}
+                    onChange={(e) => handleReviewChange(book._id, e.target.value)}
+                    placeholder="Write your review here..."
+                    className="review-textarea"
+                    disabled={updatingBookId === book._id}
+                    rows="4"
+                  />
+                </div>
                 <div className="book-actions">
+                  <button
+                    onClick={() => handleUpdateBook(book._id)}
+                    disabled={updatingBookId === book._id}
+                    className="btn-update"
+                  >
+                    {updatingBookId === book._id ? 'Updating...' : 'Save/Update'}
+                  </button>
                   {book.infoLink && (
                     <a
                       href={book.infoLink}
