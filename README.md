@@ -127,6 +127,4 @@ No environment variables required. The application uses Vite proxy for API calls
 - CORS configuration
 - Input validation on backend
 
-## License
 
-ISC
