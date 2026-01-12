@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 function LoginPage() {
   const [formData, setFormData] = useState({
@@ -44,10 +45,14 @@ function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <h1>Login</h1>
-        <p className="auth-subtitle">Welcome back to your library</p>
+        <h1>🔐 Login</h1>
+        <p className="auth-subtitle">Welcome back! Sign in to access your library</p>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="alert">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

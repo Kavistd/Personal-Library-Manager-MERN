@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -9,6 +10,9 @@ function SearchPage() {
   const [error, setError] = useState(null);
   const [savingBookId, setSavingBookId] = useState(null);
   const [savedBookIds, setSavedBookIds] = useState(new Set()); // Track saved book IDs
+  const [startIndex, setStartIndex] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [hasSearched, setHasSearched] = useState(false);
   const { isAuthenticated } = useAuth();
 
   // Fetch user's saved books to check which ones are already saved
@@ -31,28 +35,56 @@ function SearchPage() {
     }
   };
 
-  const handleSearch = async (e) => {
+  const handleSearch = (e) => {
     e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setStartIndex(0);
+    handleSearchAsync(0, true);
+  };
+
+  const handleLoadMore = () => {
+    setStartIndex(prev => {
+      const nextIndex = prev + 20;
+      handleSearchAsync(nextIndex, false);
+      return nextIndex;
+    });
+  };
+
+  const handleSearchAsync = async (searchStartIndex = 0, reset = true) => {
     if (!searchQuery.trim()) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // Google Books API search
+      // Google Books API search with pagination
       const response = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=20`
+        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=20&startIndex=${searchStartIndex}`
       );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
 
       if (data.items) {
-        setBooks(data.items);
+        if (reset) {
+          setBooks(data.items);
+        } else {
+          setBooks(prev => [...prev, ...data.items]);
+        }
+        setTotalItems(data.totalItems || 0);
       } else {
-        setBooks([]);
+        if (reset) setBooks([]);
+        setTotalItems(0);
       }
+      setHasSearched(true);
+      if (reset) setStartIndex(0);
     } catch (err) {
-      setError('Failed to search books. Please try again.');
+      setError(err.message || 'Failed to search books. Please check your connection and try again.');
       console.error('Search error:', err);
+      if (reset) setBooks([]);
     } finally {
       setLoading(false);
     }
@@ -113,26 +145,43 @@ function SearchPage() {
 
   return (
     <div className="search-page">
-      <h1>Search Books</h1>
-      <p className="search-subtitle">Search by title, author, or keyword</p>
+      <div className="search-hero">
+        <h1>📚 Readers' Choice</h1>
+        <p>Discover your next favorite book from millions in the Google Books library</p>
+      </div>
       
-      <form onSubmit={handleSearch} className="search-form">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search for books by title, author, or keyword..."
-          className="search-input"
-        />
-        <button type="submit" disabled={loading} className="search-button">
-          {loading ? 'Searching...' : 'Search'}
-        </button>
-      </form>
+      <div className="search-page-content">
+        <form onSubmit={handleSearch} className="search-form">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search for books by title, author, or keyword..."
+            className="search-input"
+          />
+          <button type="submit" disabled={loading || !searchQuery.trim()} className="search-button">
+            {loading && startIndex === 0 ? 'Searching...' : '🔍 Search'}
+          </button>
+        </form>
 
-      {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="alert">
+            <strong>⚠️ Error:</strong> {error}
+          </div>
+        )}
 
-      {books.length > 0 && (
-        <div className="books-grid">
+        {loading && startIndex === 0 && <LoadingSpinner message="Searching for books..." />}
+
+        {!loading && hasSearched && books.length === 0 && (
+          <div className="empty-state">
+            <p className="empty-state-icon">📚</p>
+            <h3>No books found</h3>
+            <p>Try a different search term or check your spelling.</p>
+          </div>
+        )}
+
+        {books.length > 0 && (
+          <div className="books-grid">
           {books.map((book) => {
             const volumeInfo = book.volumeInfo || {};
             const thumbnail = volumeInfo.imageLinks?.thumbnail || volumeInfo.imageLinks?.smallThumbnail || '';
@@ -183,10 +232,10 @@ function SearchPage() {
                         className={savedBookIds.has(book.id) ? 'btn-save saved' : 'btn-save'}
                       >
                         {savingBookId === book.id 
-                          ? 'Saving...' 
+                          ? '💾 Saving...' 
                           : savedBookIds.has(book.id) 
-                          ? 'Saved ✅' 
-                          : 'Save'}
+                          ? '✅ Saved' 
+                          : '💾 Save'}
                       </button>
                     )}
                   </div>
@@ -194,20 +243,32 @@ function SearchPage() {
               </div>
             );
           })}
-        </div>
-      )}
+          </div>
+        )}
 
-      {books.length === 0 && !loading && searchQuery && (
-        <p className="no-results">No books found. Try a different search term.</p>
-      )}
+        {books.length > 0 && !loading && (
+          <div className="pagination-info">
+            <p>📊 Showing {books.length} of {totalItems} results</p>
+            {books.length < totalItems && (
+              <button 
+                onClick={handleLoadMore} 
+                className="btn-load-more"
+                disabled={loading}
+              >
+                {loading ? 'Loading...' : '📚 Load More Books'}
+              </button>
+            )}
+          </div>
+        )}
 
-      {!isAuthenticated && books.length > 0 && (
-        <div className="auth-prompt">
-          <p>
-            <a href="/login">Login</a> or <a href="/signup">Sign up</a> to save books to your library
-          </p>
-        </div>
-      )}
+        {!isAuthenticated && books.length > 0 && (
+          <div className="auth-prompt">
+            <p>
+              <a href="/login">🔐 Login</a> or <a href="/signup">✨ Sign up</a> to save books to your library
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

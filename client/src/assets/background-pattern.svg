@@ -1,0 +1,26 @@
+<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="bookshelf" x="0" y="0" width="200" height="300" patternUnits="userSpaceOnUse">
+      <!-- Bookshelf structure -->
+      <rect x="0" y="0" width="200" height="300" fill="#8B6F47" opacity="0.1"/>
+      <!-- Book spines -->
+      <rect x="10" y="20" width="15" height="80" fill="#4A2C2A" opacity="0.2"/>
+      <rect x="30" y="20" width="12" height="80" fill="#2C3E50" opacity="0.2"/>
+      <rect x="50" y="20" width="18" height="80" fill="#8B4513" opacity="0.2"/>
+      <rect x="75" y="20" width="14" height="80" fill="#5D4E37" opacity="0.2"/>
+      <rect x="95" y="20" width="16" height="80" fill="#3E2723" opacity="0.2"/>
+      <rect x="118" y="20" width="13" height="80" fill="#6D4C41" opacity="0.2"/>
+      <rect x="138" y="20" width="15" height="80" fill="#4A2C2A" opacity="0.2"/>
+      <rect x="160" y="20" width="17" height="80" fill="#5D4037" opacity="0.2"/>
+      <rect x="10" y="110" width="15" height="80" fill="#2C3E50" opacity="0.2"/>
+      <rect x="30" y="110" width="12" height="80" fill="#8B4513" opacity="0.2"/>
+      <rect x="50" y="110" width="18" height="80" fill="#4A2C2A" opacity="0.2"/>
+      <rect x="75" y="110" width="14" height="80" fill="#6D4C41" opacity="0.2"/>
+      <rect x="95" y="110" width="16" height="80" fill="#3E2723" opacity="0.2"/>
+      <rect x="118" y="110" width="13" height="80" fill="#5D4E37" opacity="0.2"/>
+      <rect x="138" y="110" width="15" height="80" fill="#4A2C2A" opacity="0.2"/>
+      <rect x="160" y="110" width="17" height="80" fill="#2C3E50" opacity="0.2"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bookshelf)"/>
+</svg>

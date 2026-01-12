@@ -31,7 +31,7 @@ app.use('/api/books', booksRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'Personal Library Manager API' });
+  res.json({ message: 'Readers\' Choice - Personal Library Manager API' });
 });
 
 const PORT = process.env.PORT || 5000;

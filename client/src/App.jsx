@@ -1,10 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import SearchPage from './pages/SearchPage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import MyLibraryPage from './pages/MyLibraryPage';
+import Navigation from './components/Navigation';
+import ThemeToggle from './components/ThemeToggle';
+import LoadingSpinner from './components/LoadingSpinner';
 import './App.css';
 
 // Protected Route Component (must be inside AuthProvider)
@@ -12,7 +16,7 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <LoadingSpinner message="Loading..." />;
   }
   
   return isAuthenticated ? children : <Navigate to="/login" replace />;
@@ -22,6 +26,8 @@ const ProtectedRoute = ({ children }) => {
 const AppRoutes = () => {
   return (
     <div className="App">
+      <Navigation />
+      <ThemeToggle />
       <Routes>
         <Route path="/" element={<Navigate to="/search" replace />} />
         <Route path="/search" element={<SearchPage />} />
@@ -43,9 +49,11 @@ const AppRoutes = () => {
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </ThemeProvider>
     </Router>
   );
 }

@@ -63,10 +63,14 @@ function SignupPage() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <h1>Sign Up</h1>
-        <p className="auth-subtitle">Create your account to start managing your library</p>
+        <h1>✨ Sign Up</h1>
+        <p className="auth-subtitle">Join us today and start building your personal library</p>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="alert">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="form-group">

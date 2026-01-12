@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 function MyLibraryPage() {
   const [books, setBooks] = useState([]);
@@ -28,6 +29,7 @@ function MyLibraryPage() {
       const response = await api.get('/books');
       const fetchedBooks = response.data;
       setBooks(fetchedBooks);
+      setError(''); // Clear any previous errors
       
       // Initialize form values with current book data
       const initialForms = {};
@@ -40,7 +42,13 @@ function MyLibraryPage() {
       setBookForms(initialForms);
     } catch (err) {
       // 401 errors are handled by the axios interceptor
-      setError('Failed to load books. Please try again.');
+      if (err.response?.status === 401) {
+        setError('Your session has expired. Please login again.');
+      } else if (err.response?.status >= 500) {
+        setError('Server error. Please try again later.');
+      } else {
+        setError(err.response?.data?.message || 'Failed to load books. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -131,19 +139,19 @@ function MyLibraryPage() {
   };
 
   if (loading) {
-    return <div className="loading">Loading your library...</div>;
+    return <LoadingSpinner message="Loading your library..." />;
   }
 
   return (
     <div className="library-page">
       <div className="library-header">
         <div>
-          <h1>My Library</h1>
-          <p>Welcome, {user?.username || 'User'}!</p>
+          <h1>📖 My Library</h1>
+          <p>Welcome back, {user?.username || 'User'}! Manage your book collection</p>
         </div>
         <div className="header-actions">
           <button onClick={() => navigate('/search')} className="btn-primary">
-            Search Books
+            🔍 Search Books
           </button>
           <button onClick={handleLogout} className="btn-secondary">
             Logout
@@ -151,13 +159,20 @@ function MyLibraryPage() {
         </div>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      <div style={{ padding: '0 2rem' }}>
+        {error && (
+          <div className="error-message" role="alert">
+            <strong>⚠️ Error:</strong> {error}
+          </div>
+        )}
 
       {books.length === 0 ? (
-        <div className="empty-library">
-          <p>Your library is empty.</p>
+        <div className="empty-state">
+          <p className="empty-state-icon">📚</p>
+          <h3>No books saved yet</h3>
+          <p>Your library is empty. Start adding books to build your collection!</p>
           <button onClick={() => navigate('/search')} className="btn-primary">
-            Start Adding Books
+            🔍 Start Adding Books
           </button>
         </div>
       ) : (
@@ -207,7 +222,7 @@ function MyLibraryPage() {
                     disabled={updatingBookId === book._id}
                     className="btn-update"
                   >
-                    {updatingBookId === book._id ? 'Updating...' : 'Save/Update'}
+                    {updatingBookId === book._id ? '💾 Updating...' : '💾 Save/Update'}
                   </button>
                   {book.infoLink && (
                     <a
@@ -223,7 +238,7 @@ function MyLibraryPage() {
                     onClick={() => handleDelete(book._id)}
                     className="btn-delete"
                   >
-                    Remove
+                    🗑️ Remove
                   </button>
                 </div>
               </div>
@@ -231,6 +246,7 @@ function MyLibraryPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
