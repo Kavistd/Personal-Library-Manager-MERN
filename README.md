@@ -60,8 +60,12 @@ Access the application at `http://localhost:3000`
 | `JWT_SECRET` | Yes | `your-secure-random-key-32-characters` |
 | `PORT` | No | `5000` |
 
-### Frontend
-No environment variables required. The application uses Vite proxy for API calls.
+### Frontend (client/.env)
+API calls go through the Vite proxy, so no backend URL is needed.
+
+| Variable | Required | Example |
+|----------|----------|---------|
+| `VITE_GOOGLE_BOOKS_API_KEY` | Recommended | Google Cloud API key with the Books API enabled. Without it, search uses Google's shared anonymous quota and may fail with HTTP 429. |
 
 ## Architecture
 

@@ -63,8 +63,8 @@ function SignupPage() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <h1>✨ Sign Up</h1>
-        <p className="auth-subtitle">Join us today and start building your personal library</p>
+        <h1>Create your library</h1>
+        <p className="auth-subtitle">Save books, track your reading and keep your notes in one place.</p>
 
         {error && (
           <div className="error-message" role="alert">

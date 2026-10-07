@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -43,11 +44,11 @@ function SearchPage() {
   };
 
   const handleLoadMore = () => {
-    setStartIndex(prev => {
-      const nextIndex = prev + 20;
-      handleSearchAsync(nextIndex, false);
-      return nextIndex;
-    });
+    // Fetch outside the state updater: StrictMode runs updaters twice,
+    // which would trigger duplicate requests and duplicate results
+    const nextIndex = startIndex + 20;
+    setStartIndex(nextIndex);
+    handleSearchAsync(nextIndex, false);
   };
 
   const handleSearchAsync = async (searchStartIndex = 0, reset = true) => {
@@ -58,10 +59,31 @@ function SearchPage() {
 
     try {
       // Google Books API search with pagination
-      const response = await fetch(
-        `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=20&startIndex=${searchStartIndex}`
-      );
-      
+      // Optional API key: keyless requests share a small daily quota and often get 429
+      const apiKey = import.meta.env.VITE_GOOGLE_BOOKS_API_KEY;
+      const keyParam = apiKey ? `&key=${encodeURIComponent(apiKey)}` : '';
+      const url = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(searchQuery)}&maxResults=20&startIndex=${searchStartIndex}${keyParam}`;
+
+      // Google Books intermittently returns 503 "backendFailed"; retry a few times with backoff
+      let response;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        response = await fetch(url);
+        if (response.status < 500 || attempt === 3) break;
+        await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
+      }
+
+      if (response.status >= 500) {
+        throw new Error('Google Books is temporarily unavailable. Please try again in a moment.');
+      }
+
+      if (response.status === 429) {
+        throw new Error(
+          apiKey
+            ? 'Google Books API quota exceeded for your API key. Please try again later.'
+            : 'Google Books API quota exceeded. Set VITE_GOOGLE_BOOKS_API_KEY in client/.env to use your own quota.'
+        );
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -146,35 +168,42 @@ function SearchPage() {
   return (
     <div className="search-page">
       <div className="search-hero">
-        <h1>📚 Readers' Choice</h1>
-        <p>Discover your next favorite book from millions in the Google Books library</p>
+        <span className="hero-eyebrow">Your personal library</span>
+        <h1>Find your next <em>favorite</em> book</h1>
+        <p>Search millions of titles from Google Books, save the ones you love and track what you read.</p>
       </div>
       
       <div className="search-page-content">
-        <form onSubmit={handleSearch} className="search-form">
+        <form onSubmit={handleSearch} className="search-form" role="search">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search for books by title, author, or keyword..."
+            placeholder="Search by title, author or keyword"
             className="search-input"
+            aria-label="Search books"
           />
           <button type="submit" disabled={loading || !searchQuery.trim()} className="search-button">
-            {loading && startIndex === 0 ? 'Searching...' : '🔍 Search'}
+            {loading && startIndex === 0 ? 'Searching…' : 'Search'}
           </button>
         </form>
 
         {error && (
           <div className="error-message" role="alert">
-            <strong>⚠️ Error:</strong> {error}
+            <strong>Error:</strong> {error}
           </div>
         )}
 
-        {loading && startIndex === 0 && <LoadingSpinner message="Searching for books..." />}
+        {loading && startIndex === 0 && <LoadingSpinner message="Searching for books…" />}
 
         {!loading && hasSearched && books.length === 0 && (
           <div className="empty-state">
-            <p className="empty-state-icon">📚</p>
+            <span className="empty-state-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            </span>
             <h3>No books found</h3>
             <p>Try a different search term or check your spelling.</p>
           </div>
@@ -193,16 +222,21 @@ function SearchPage() {
             
             return (
               <div key={book.id} className="book-card">
-                {thumbnail && (
-                  <img 
-                    src={thumbnail} 
-                    alt={title} 
-                    className="book-thumbnail"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                )}
+                <div className="book-cover">
+                  <span className="book-cover-placeholder" aria-hidden="true">{title.charAt(0)}</span>
+                  {thumbnail && (
+                    <img
+                      src={thumbnail.replace('http://', 'https://')}
+                      alt={title}
+                      className="book-thumbnail"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.parentElement.classList.add('cover-missing');
+                      }}
+                    />
+                  )}
+                </div>
                 <div className="book-info">
                   <h3>{title}</h3>
                   {subtitle && <h4 className="book-subtitle">{subtitle}</h4>}
@@ -215,6 +249,19 @@ function SearchPage() {
                     </p>
                   )}
                   <div className="book-actions">
+                    {isAuthenticated && (
+                      <button
+                        onClick={() => handleSaveBook(book)}
+                        disabled={savingBookId === book.id || savedBookIds.has(book.id)}
+                        className={savedBookIds.has(book.id) ? 'btn-save saved' : 'btn-save'}
+                      >
+                        {savingBookId === book.id
+                          ? 'Saving…'
+                          : savedBookIds.has(book.id)
+                          ? '✓ Saved'
+                          : '+ Save'}
+                      </button>
+                    )}
                     {infoLink && infoLink !== '#' && (
                       <a
                         href={infoLink}
@@ -222,21 +269,8 @@ function SearchPage() {
                         rel="noopener noreferrer"
                         className="book-link"
                       >
-                        View on Google Books
+                        Preview
                       </a>
-                    )}
-                    {isAuthenticated && (
-                      <button
-                        onClick={() => handleSaveBook(book)}
-                        disabled={savingBookId === book.id || savedBookIds.has(book.id)}
-                        className={savedBookIds.has(book.id) ? 'btn-save saved' : 'btn-save'}
-                      >
-                        {savingBookId === book.id 
-                          ? '💾 Saving...' 
-                          : savedBookIds.has(book.id) 
-                          ? '✅ Saved' 
-                          : '💾 Save'}
-                      </button>
                     )}
                   </div>
                 </div>
@@ -246,16 +280,16 @@ function SearchPage() {
           </div>
         )}
 
-        {books.length > 0 && !loading && (
+        {books.length > 0 && (!loading || startIndex > 0) && (
           <div className="pagination-info">
-            <p>📊 Showing {books.length} of {totalItems} results</p>
+            <p>Showing {books.length} of {totalItems.toLocaleString()} results</p>
             {books.length < totalItems && (
               <button 
                 onClick={handleLoadMore} 
                 className="btn-load-more"
                 disabled={loading}
               >
-                {loading ? 'Loading...' : '📚 Load More Books'}
+                {loading ? 'Loading…' : 'Load more books'}
               </button>
             )}
           </div>
@@ -264,7 +298,7 @@ function SearchPage() {
         {!isAuthenticated && books.length > 0 && (
           <div className="auth-prompt">
             <p>
-              <a href="/login">🔐 Login</a> or <a href="/signup">✨ Sign up</a> to save books to your library
+              <Link to="/login">Log in</Link> or <Link to="/signup">create an account</Link> to save books to your library.
             </p>
           </div>
         )}

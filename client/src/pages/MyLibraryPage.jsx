@@ -12,7 +12,7 @@ function MyLibraryPage() {
   // Track form values for each book (status and review)
   const [bookForms, setBookForms] = useState({});
   const navigate = useNavigate();
-  const { user, logout, isAuthenticated } = useAuth(); // Get user and logout from AuthContext
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -134,63 +134,81 @@ function MyLibraryPage() {
     }
   };
 
-  const handleLogout = () => {
-    logout(); // Use AuthContext's logout function
-  };
-
   if (loading) {
-    return <LoadingSpinner message="Loading your library..." />;
+    return <LoadingSpinner message="Loading your library…" />;
   }
+
+  const countByStatus = (status) => books.filter((book) => book.status === status).length;
 
   return (
     <div className="library-page">
       <div className="library-header">
         <div>
-          <h1>📖 My Library</h1>
-          <p>Welcome back, {user?.username || 'User'}! Manage your book collection</p>
+          <h1>My Library</h1>
+          <p>Welcome back, {user?.username || 'reader'}. Here's everything on your shelf.</p>
         </div>
         <div className="header-actions">
           <button onClick={() => navigate('/search')} className="btn-primary">
-            🔍 Search Books
-          </button>
-          <button onClick={handleLogout} className="btn-secondary">
-            Logout
+            + Add books
           </button>
         </div>
       </div>
 
-      <div style={{ padding: '0 2rem' }}>
+      <div className="library-content">
         {error && (
           <div className="error-message" role="alert">
-            <strong>⚠️ Error:</strong> {error}
+            <strong>Error:</strong> {error}
           </div>
         )}
 
+      {books.length > 0 && (
+        <div className="library-stats">
+          <span className="library-stat"><strong>{books.length}</strong> books</span>
+          <span className="library-stat"><strong>{countByStatus('Reading')}</strong> reading</span>
+          <span className="library-stat"><strong>{countByStatus('Completed')}</strong> completed</span>
+          <span className="library-stat"><strong>{countByStatus('Want to Read')}</strong> want to read</span>
+        </div>
+      )}
+
       {books.length === 0 ? (
         <div className="empty-state">
-          <p className="empty-state-icon">📚</p>
-          <h3>No books saved yet</h3>
-          <p>Your library is empty. Start adding books to build your collection!</p>
+          <span className="empty-state-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 19.5V5a2 2 0 0 1 2-2h13v15H6.5A2.5 2.5 0 0 0 4 20.5 2.5 2.5 0 0 0 6.5 23H19v-5" />
+            </svg>
+          </span>
+          <h3>Your shelf is empty</h3>
+          <p>Search for books you love and save them here to track your reading.</p>
           <button onClick={() => navigate('/search')} className="btn-primary">
-            🔍 Start Adding Books
+            Find books
           </button>
         </div>
       ) : (
         <div className="books-grid">
           {books.map((book) => (
             <div key={book._id} className="book-card">
-              {book.thumbnail && (
-                <img src={book.thumbnail} alt={book.title} className="book-thumbnail" />
-              )}
+              <div className="book-cover">
+                <span className="book-cover-placeholder" aria-hidden="true">{book.title?.charAt(0)}</span>
+                {book.thumbnail && (
+                  <img
+                    src={book.thumbnail.replace('http://', 'https://')}
+                    alt={book.title}
+                    className="book-thumbnail"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.parentElement.classList.add('cover-missing');
+                    }}
+                  />
+                )}
+              </div>
               <div className="book-info">
                 <h3>{book.title}</h3>
                 <p className="book-authors">
                   {book.authors ? book.authors.join(', ') : 'Unknown Author'}
                 </p>
                 {book.description && (
-                  <p className="book-description">
-                    {book.description.substring(0, 150)}...
-                  </p>
+                  <p className="book-description">{book.description}</p>
                 )}
                 <div className="book-status">
                   <label>Status:</label>
@@ -222,7 +240,7 @@ function MyLibraryPage() {
                     disabled={updatingBookId === book._id}
                     className="btn-update"
                   >
-                    {updatingBookId === book._id ? '💾 Updating...' : '💾 Save/Update'}
+                    {updatingBookId === book._id ? 'Saving…' : 'Save changes'}
                   </button>
                   {book.infoLink && (
                     <a
@@ -231,14 +249,14 @@ function MyLibraryPage() {
                       rel="noopener noreferrer"
                       className="book-link"
                     >
-                      View Details
+                      Details
                     </a>
                   )}
                   <button
                     onClick={() => handleDelete(book._id)}
                     className="btn-delete"
                   >
-                    🗑️ Remove
+                    Remove
                   </button>
                 </div>
               </div>

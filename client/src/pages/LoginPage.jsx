@@ -45,8 +45,8 @@ function LoginPage() {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        <h1>🔐 Login</h1>
-        <p className="auth-subtitle">Welcome back! Sign in to access your library</p>
+        <h1>Welcome back</h1>
+        <p className="auth-subtitle">Sign in to pick up where you left off.</p>
 
         {error && (
           <div className="error-message" role="alert">
